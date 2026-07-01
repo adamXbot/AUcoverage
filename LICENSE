@@ -22,3 +22,21 @@ ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 
 For more information, please refer to <https://unlicense.org>
+
+-------------------------------------------------------------------------------
+NOTE ON THIRD-PARTY DATA (not covered by the public-domain dedication above):
+
+The Unlicense applies to THIS PROJECT'S OWN CODE only. The data the app displays
+is owned by third parties and carries its own terms — retain their attributions:
+
+  * Mobile coverage & tower-site data — © Commonwealth of Australia
+    (ACCC Audit of Telecommunications Infrastructure Assets / Mobile
+    Infrastructure Report), licensed CC BY 2.5 AU.
+  * Geocoding — © OpenStreetMap contributors (ODbL), via Nominatim.
+  * Base map tiles — © OpenFreeMap / OpenMapTiles, data © OpenStreetMap
+    contributors.
+  * Leaflet — BSD-2-Clause. MapLibre GL JS — BSD-3-Clause.
+
+Telstra, Optus and Vodafone are trademarks of their respective owners, used
+nominatively to identify each network. This is an independent tool, not
+affiliated with or endorsed by any carrier.

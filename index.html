@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AU Mobile Coverage Checker — Telstra, Optus &amp; Vodafone</title>
+    <meta
+      name="description"
+      content="Compare Telstra, Optus and Vodafone (TPG) mobile coverage at an Australian address — or between two addresses — using open Australian Government data. Free, open source, accessible."
+    />
+    <meta name="theme-color" content="#0b3d64" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230b3d64'/%3E%3Cpath d='M16 6l3 6 6 1-4 4 1 6-6-3-6 3 1-6-4-4 6-1z' fill='%23fff'/%3E%3C/svg%3E"
+    />
+
+    <!-- Leaflet (BSD-2) from CDN, pinned + Subresource Integrity -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <!-- MapLibre GL (BSD-3) for the OpenFreeMap vector base map, pinned + SRI -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css"
+      integrity="sha256-V2sIX92Uh6ZaGSFTKMHghsB85b9toJtmazgG09AI2uk="
+      crossorigin=""
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <div class="wrap">
+        <h1><span class="h1-emoji" aria-hidden="true">📡📶📱</span> Aussie Mobile Coverage Checker</h1>
+        <p class="tagline">
+          A free, open tool that uses open gov data to compare <strong>Telstra</strong>, <strong>Optus</strong> and <strong>Vodafone</strong> coverage side by side. <strong>Tool is not affiliated with or endorsed by any carrier</strong>
+        </p>
+        <p class="disclaimer" role="note">
+          This tool provides estimates only,
+          <a href="#official-maps">always confirm on the carrier’s own checker</a>.
+        </p>
+      </div>
+    </header>
+
+    <main id="main" class="wrap">
+      <!-- 1. Address -->
+      <section aria-labelledby="addr-h" class="panel">
+        <h2 id="addr-h">1. Enter an address</h2>
+        <form id="coverage-form" novalidate>
+          <div class="field">
+            <label for="addrA">Address A <span class="opt">(optional)</span></label>
+            <input
+              id="addrA"
+              name="addrA"
+              type="text"
+              autocomplete="street-address"
+              placeholder="e.g. 123 George St, Sydney NSW"
+            />
+          </div>
+          <div class="field">
+            <label for="addrB">Address B <span class="opt">(optional — check coverage between two places)</span></label>
+            <input
+              id="addrB"
+              name="addrB"
+              type="text"
+              autocomplete="off"
+              placeholder="e.g. Katoomba NSW"
+            />
+          </div>
+          <button id="submitBtn" type="submit" class="primary">Check coverage</button>
+        </form>
+      </section>
+
+      <!-- 2. Map + coverage-layer filters -->
+      <section id="map-section" aria-labelledby="map-h" class="panel">
+        <h2 id="map-h">2. Map &amp; coverage layers</h2>
+        <p class="hint">
+          Toggle networks (and, under Advanced, per-network 5G / 4G) to filter what’s drawn on the
+          map — these are map filters, no address needed.
+        </p>
+
+        <div class="map-filters">
+          <fieldset class="layer-toggles">
+            <legend class="sr-only">Networks to overlay on the map</legend>
+            <button type="button" class="net-toggle" data-net="telstra" data-col="coverage" aria-pressed="false">
+              <span class="sw" aria-hidden="true"></span> Telstra
+            </button>
+            <button type="button" class="net-toggle" data-net="optus" data-col="coverage" aria-pressed="false">
+              <span class="sw" aria-hidden="true"></span> Optus
+            </button>
+            <button type="button" class="net-toggle" data-net="vodafone" data-col="coverage" aria-pressed="false">
+              <span class="sw" aria-hidden="true"></span> Vodafone (TPG)
+            </button>
+          </fieldset>
+
+          <fieldset class="version-toggle">
+            <legend class="sr-only">Which vintage of the government coverage data to use</legend>
+            <span class="version-label">Data<a class="fn-ref" href="#data-footnote" aria-label="jump to data-source footnote"><sup>†</sup></a></span>
+            <label><input type="radio" name="dataversion" value="latest" checked /> <span>2025</span></label>
+            <label><input type="radio" name="dataversion" value="baseline" /> <span>2021</span></label>
+          </fieldset>
+        </div>
+
+        <details id="advanced" class="layer-advanced">
+          <summary><strong>Advanced layers</strong> — 4G / 5G split, tower sites &amp; the brands on each network</summary>
+
+          <fieldset class="adv-group">
+            <legend>Per-network technology</legend>
+            <p id="matrix-note" class="muted" aria-live="polite"></p>
+            <div class="tech-grid">
+              <div class="tech-row">
+                <span class="tech-net" data-net="telstra"><span class="sw" aria-hidden="true"></span> Telstra</span>
+                <button type="button" class="tech-toggle" data-net="telstra" data-col="5g" aria-pressed="false">5G</button>
+                <button type="button" class="tech-toggle" data-net="telstra" data-col="4g" aria-pressed="false">4G</button>
+              </div>
+              <div class="tech-row">
+                <span class="tech-net" data-net="optus"><span class="sw" aria-hidden="true"></span> Optus</span>
+                <button type="button" class="tech-toggle" data-net="optus" data-col="5g" aria-pressed="false">5G</button>
+                <button type="button" class="tech-toggle" data-net="optus" data-col="4g" aria-pressed="false">4G</button>
+              </div>
+              <div class="tech-row">
+                <span class="tech-net" data-net="vodafone"><span class="sw" aria-hidden="true"></span> Vodafone (TPG)</span>
+                <button type="button" class="tech-toggle" data-net="vodafone" data-col="5g" aria-pressed="false">5G</button>
+                <button type="button" class="tech-toggle" data-net="vodafone" data-col="4g" aria-pressed="false">4G</button>
+              </div>
+            </div>
+            <label class="pattern-toggle">
+              <input type="checkbox" id="cb-patterns" />
+              Colour-blind patterns — every network + technology gets its own shape
+            </label>
+            <p class="muted">
+              These are the <strong>network</strong> footprints. Optus &amp; Vodafone MVNOs match them;
+              most <strong>Telstra</strong> MVNOs use the smaller
+              (<a href="https://www.telstrawholesale.com.au/products/mobiles/coverage.html" target="_blank" rel="noopener">Telstra Wholesale</a>)
+              footprint (~98.8% vs ~99.7% of population), which isn’t in the open data.
+            </p>
+          </fieldset>
+
+          <fieldset class="adv-group">
+            <legend>Mobile tower sites</legend>
+            <label class="check-row">
+              <input type="checkbox" id="sites-toggle" />
+              Show mobile tower sites in the map view (zoom in to load; coloured by carrier)
+            </label>
+            <p id="sites-info" class="muted" aria-live="polite"></p>
+          </fieldset>
+
+          <details class="brands-details">
+            <summary>Brands that ride each network</summary>
+            <div class="net-brands">
+              <div class="net-brand">
+                <h3>Telstra</h3>
+                <p class="warn">
+                  ⚠ Most Telstra-network MVNOs run on the <strong>smaller Telstra Wholesale
+                  footprint</strong> (~98.8% of population vs Telstra retail ~99.7% — a wider gap
+                  for 5G), so they get less than the coverage shaded on the map.
+                  <strong>Boost Mobile</strong> is the exception (full Telstra retail coverage).
+                </p>
+                <ul>
+                  <li>Boost Mobile <em>(full Telstra coverage)</em></li>
+                  <li>Belong</li>
+                  <li>Aldi Mobile</li>
+                  <li>Woolworths / Everyday Mobile</li>
+                  <li>More</li>
+                  <li>Tangerine</li>
+                  <li>Exetel</li>
+                  <li>Superloop</li>
+                  <li>Numobile</li>
+                </ul>
+              </div>
+              <div class="net-brand">
+                <h3>Optus</h3>
+                <p>Optus-network brands get the <strong>same footprint as Optus retail</strong>.</p>
+                <ul>
+                  <li>amaysim</li>
+                  <li>Coles Mobile</li>
+                  <li>Catch Connect</li>
+                  <li>Moose Mobile</li>
+                  <li>Aussie Broadband (mobile)</li>
+                  <li>Dodo · iPrimus</li>
+                  <li>SpinTel</li>
+                  <li>Southern Phone</li>
+                  <li>Gomo (Optus)</li>
+                </ul>
+              </div>
+              <div class="net-brand">
+                <h3>Vodafone (TPG)</h3>
+                <p class="warn">
+                  ⚠ Vodafone’s regional reach expanded through its Optus network-sharing (MOCN) deal.
+                  The <strong>2025</strong> data includes it; the <strong>2021–22</strong> baseline
+                  understates Vodafone.
+                </p>
+                <ul>
+                  <li>Vodafone · TPG</li>
+                  <li>iiNet · Internode</li>
+                  <li>felix mobile</li>
+                  <li>Lebara Mobile</li>
+                  <li>Kogan Mobile</li>
+                  <li>Lyca Mobile</li>
+                </ul>
+              </div>
+            </div>
+          </details>
+        </details>
+
+        <div
+          id="map"
+          role="application"
+          aria-label="Coverage map. This is a visual aid; the Results below contain the same information as text."
+        ></div>
+        <div id="legend" class="legend" aria-hidden="true"></div>
+      </section>
+
+      <!-- 3. Results (under the map) -->
+      <section aria-labelledby="res-h" class="panel">
+        <h2 id="res-h">3. Results</h2>
+        <p id="status" role="status" aria-live="polite" class="status"></p>
+        <div id="results" aria-busy="false">
+          <p class="muted">Enter an address above and select “Check coverage” to compare all three networks side by side.</p>
+        </div>
+        <p id="data-footnote" class="data-footnote"></p>
+      </section>
+
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap">
+        <section id="official-maps" class="footer-checkers" aria-labelledby="official-maps-h">
+          <h2 id="official-maps-h">Official carrier coverage checkers</h2>
+          <p class="muted">
+            These are open-government estimates, not the carriers’ live maps — confirm on the carrier’s own checker:
+          </p>
+          <ul class="checker-links">
+            <li><a href="https://www.telstra.com.au/coverage-networks/our-coverage" target="_blank" rel="noopener">Telstra coverage <span aria-hidden="true">↗</span></a></li>
+            <li><a href="https://www.optus.com.au/living-network/coverage" target="_blank" rel="noopener">Optus coverage <span aria-hidden="true">↗</span></a></li>
+            <li><a href="https://www.vodafone.com.au/network/coverage-checker" target="_blank" rel="noopener">Vodafone coverage <span aria-hidden="true">↗</span></a></li>
+          </ul>
+        </section>
+
+        <h2 class="sr-only">About this tool &amp; data sources</h2>
+        <p>
+          <strong>Why this exists:</strong> from 30 June 2026, Australia’s
+          <em>Mobile Network Coverage Maps Industry Standard 2026</em> (ACMA) requires carriers to
+          publish standardised 4G/5G maps labelled <em>good / moderate / basic / no coverage</em>,
+          and the ACCC has warned providers that coverage claims must match. This open-source tool
+          helps you sanity-check and compare, then sends you to each carrier’s official map for the
+          authoritative answer.
+        </p>
+        <p class="muted">
+          Coverage estimate &amp; tower data © Commonwealth of Australia —
+          <a
+            href="https://www.accc.gov.au/by-industry/telecommunications-and-internet/mobile-services-regulation/mobile-infrastructure-report"
+            target="_blank"
+            rel="noopener"
+            >ACCC Audit of Telecommunications Infrastructure Assets (Infrastructure RKR)</a
+          >, served via
+          <a href="https://spatial.infrastructure.gov.au" target="_blank" rel="noopener"
+            >spatial.infrastructure.gov.au</a
+          >, licensed
+          <a href="https://creativecommons.org/licenses/by/2.5/au/" target="_blank" rel="noopener"
+            >CC BY 2.5 AU</a
+          >. Geocoding ©
+          <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener"
+            >OpenStreetMap</a
+          >
+          contributors via Nominatim. Base map ©
+          <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> /
+          <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a>, data ©
+          OpenStreetMap contributors.
+        </p>
+        <p class="muted">
+          Telstra, Optus and Vodafone are trademarks of their respective owners; used here only to
+          identify each network. Not affiliated with or endorsed by any carrier.
+          <a href="https://github.com/adamxbot/AUcoverage" target="_blank" rel="noopener" id="repo-link">Source on GitHub</a>.
+        </p>
+      </div>
+    </footer>
+
+    <noscript>
+      <div class="wrap">
+        <p>
+          This checker needs JavaScript to look up addresses and coverage. You can still open the
+          official carrier maps directly:
+          <a href="https://www.telstra.com.au/coverage-networks/our-coverage">Telstra</a>,
+          <a href="https://www.optus.com.au/living-network/coverage">Optus</a>,
+          <a href="https://www.vodafone.com.au/network/coverage-checker">Vodafone</a>.
+        </p>
+      </div>
+    </noscript>
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <!-- MapLibre GL + the Leaflet bridge, for the OpenFreeMap vector base map -->
+    <script
+      src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"
+      integrity="sha256-vpYzxNhw4m+zfxz+XFp3GBZnEUAD6hYgeseFDY2ordE="
+      crossorigin=""
+    ></script>
+    <script
+      src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.3/leaflet-maplibre-gl.js"
+      integrity="sha256-HDM2eWLndVwaFtH4Vlj9yWtbqjb4Gt/KlJMXTNG1Js4="
+      crossorigin=""
+    ></script>
+    <script src="js/config.js"></script>
+    <script src="js/geo.js"></script>
+    <script src="js/services.js"></script>
+    <script src="js/map.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html>
